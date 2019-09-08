@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div class="ball">{{ selectedNumber }}</div>
+      <button @click="startHandler">
+        {{ lotteryStatus ? '重新開始' : '開始' }}
+      </button>
+      <div class="list">
+        <div
+          class="ball"
+          v-for="item in selectedBall"
+          :class="{special:item.selected==ballCount}"
+        >
+          {{ item.num }}
+        </div>
+      </div>
+      <button @click="sortHandler(sortStatus)" v-show="lotteryStatus">
+        {{ sortStatus ? '依照編號排序' : '依照開獎順序' }}
+      </button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.10/vue.js"></script>
+    <script>
+      ;(function(Vue) {
+        // 計時器
+        let timer
+        new Vue({
+          el: '#app',
+          data() {
+            return {
+              // 全部的球
+              balls: [],
+              // 目前在跑的索引
+              selected: 0,
+              // 選號中/ 未選號中
+              lotteryStatus: false,
+              // 未號中時，時間間格
+              timerInterval: 500,
+              // 選號中時，時間間格
+              lotteryInterval: 1,
+              // 總球數
+              ballRange: 49,
+              // 總共選幾顆
+              ballCount: 7,
+              // 排序順序
+              // true: 依照開獎順序，false: 依照編號排序
+              sortStatus: true
+            }
+          },
+          computed: {
+            // 已選擇的球
+            selectedBall() {
+              return this.balls
+                .filter(ball => ball.selected > 0)
+                .sort((a, b) => a.selected - b.selected)
+            },
+            // 未選擇的球
+            unselectedBall() {
+              return this.balls.filter(ball => !ball.selected)
+            },
+            // 目前在跑的球號
+            selectedNumber() {
+              return this.unselectedBall[this.selected].num
+            }
+          },
+          methods: {
+            // 未選號中的計時事件
+            setTimer() {
+              clearTimeout(timer)
+              timer = setTimeout(() => {
+                this.selected = (this.selected + 1) % this.unselectedBall.length
+                this.setTimer()
+              }, this.timerInterval)
+            },
+            // 開始選號事件
+            startHandler() {
+              // 正在選號，點選重新開始
+              if (this.lotteryStatus) {
+                // 重新開始
+                if (confirm('確定重新開始?')) {
+                  this.balls.forEach(ball => (ball.selected = 0))
+                  this.lotteryStatus = false
+                  this.setTimer()
+                }
+              }
+              // 未在選號，點選開始
+              else {
+                this.lotteryStatus = true
+                this.lotteryInterval = 1
+                this.setLottery()
+              }
+            },
+            // 選號中的計時器事件
+            setLottery() {
+              clearTimeout(timer)
+              timer = setTimeout(this.lotteryHandler, this.lotteryInterval)
+            },
+            // 選號事件
+            lotteryHandler() {
+              this.selected = (this.selected + 1) % this.unselectedBall.length
+              if (this.lotteryStatus) {
+                // 變慢跑號速度
+                this.lotteryInterval *= 1.1
+                // 選到了
+                if (this.lotteryInterval > this.timerInterval) {
+                  this.unselectedBall[this.selected].selected =
+                    this.selectedBall.length + 1
+                  this.lotteryInterval = 1
+                  // 噸一秒才選
+                  if (this.selectedBall.length < this.ballCount)
+                    setTimeout(() => {
+                      this.setLottery()
+                    }, 1000)
+                  else timer = null
+                }
+                // 未選到
+                else this.setLottery()
+              }
+            },
+            sortHandler(status) {
+              this.sortStatus = !status
+              // 依照編號排序
+              if (status) this.selectedBall.sort((a, b) => a.num - b.num)
+              // 依照開獎順序
+              else this.selectedBall.sort((a, b) => a.selected - b.selected)
+            }
+          },
+          // 在資料和DOM未綁定前
+          beforeMount() {
+            for (let i = 1; i <= this.ballRange; i++) {
+              this.balls.push({ num: i, selected: 0 })
+            }
+          },
+          mounted() {
+            this.setTimer()
+          }
+        })
+      })(Vue)
+    </script>
+  </body>
+</html>
